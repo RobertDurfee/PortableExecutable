@@ -167,4 +167,4 @@ int main()
 	return 0;
 }
 ```
-Usage is incredibly simple. Here, the executable `Test.exe` is loaded and all headers and section data is printed to the standard output stream.
+Usage is incredibly simple. Here, the executable `Test.exe` is loaded and all headers and section data are printed to the standard output stream.
