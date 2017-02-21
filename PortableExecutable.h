@@ -134,30 +134,23 @@ public:
 
 	~PortableExecutable();
 
-	void Parse();
-	void Parse(string filename);
-
-	void Save();
+	void Open(string filename);
 	void Save(string filename);
 
-	void PrintHeader(int);
-	string GetHeader(int);
-
-	int NumberOfSections();
-
-	Section GetSection(string);
-	int GetSectionNumber(string);
+	string ToString(int command);
+	
+	void * GetHeader(int command);
+	Section * GetSection(int sectionNumber);
+	Section * GetSection(string sectionName);
+	int GetSectionNumber(string sectionName);
 
 private:
-	string filename;
-
 	EXECUTABLE_DOS_HEADER dosHeader;
+	unsigned char * DOSProgram;
 	EXECUTABLE_FILE_HEADER fileHeader;
 	EXECUTABLE_OPTIONAL_HEADER optionalHeader;
+	
 	EXECUTABLE_SECTION_HEADER * sectionHeaders;
-
-	unsigned char * DOSProgram;
-
 	Section * sections;
 };
 
@@ -167,7 +160,7 @@ PortableExecutable::PortableExecutable()
 }
 PortableExecutable::PortableExecutable(string filename)
 {
-	this->filename = filename;
+	Open(filename);
 }
 PortableExecutable::~PortableExecutable()
 {
@@ -177,13 +170,9 @@ PortableExecutable::~PortableExecutable()
 	delete[] sectionHeaders;
 	delete[] sections;
 }
-void PortableExecutable::Parse()
+void PortableExecutable::Open(string filename)
 {
-	Parse(filename);
-}
-void PortableExecutable::Parse(string filename)
-{
-	this->filename = filename;
+	this->~PortableExecutable();
 
 	ifstream ifile(filename, ios::binary);
 
@@ -214,14 +203,8 @@ void PortableExecutable::Parse(string filename)
 			ifile.read((char *)&sections[i].Data[j++], sizeof(unsigned char));
 	}
 }
-void PortableExecutable::Save()
-{
-	Save(filename);
-}
 void PortableExecutable::Save(string filename)
 {
-	this->filename = filename;
-
 	ofstream ofile(filename, ios::binary);
 
 	ofile.write((char *)&dosHeader, sizeof(EXECUTABLE_DOS_HEADER));
@@ -243,15 +226,12 @@ void PortableExecutable::Save(string filename)
 			ofile.write((char *)&sections[i].Data[j++], sizeof(unsigned char));
 	}
 }
-void PortableExecutable::PrintHeader(int header)
-{
-	cout << GetHeader(header);
-}
-string PortableExecutable::GetHeader(int header)
+string PortableExecutable::ToString(int command = (0x00 << 24) | (0xFF << 16) | DOS_HEADER | FILE_HEADER | OPTIONAL_HEADER | SECTION_HEADER | SECTION_DATA)
 {
 	stringstream ss;
-	int section = (header >> 16) & 0xFFFF;
-	if (header & DOS_HEADER)
+	int startingSection = (command >> 24) & 0xFF;
+	int endingSection = (command >> 16) & 0xFF;
+	if (command & DOS_HEADER)
 	{
 		ss << "Dos Header:" << endl;
 		ss << endl;
@@ -274,7 +254,7 @@ string PortableExecutable::GetHeader(int header)
 		ss << "AddressOfNewEXEHeader:       0x"; ss.width(8); ss.fill('0'); ss << hex << dosHeader.AddressOfNewEXEHeader << endl;
 		ss << endl;
 	}
-	if (header & FILE_HEADER)
+	if (command & FILE_HEADER)
 	{
 		ss << "File Header:" << endl;
 		ss << endl;
@@ -288,7 +268,7 @@ string PortableExecutable::GetHeader(int header)
 		ss << "Characteristics:             0x"; ss.width(4); ss.fill('0'); ss << hex << fileHeader.Characteristics << endl;
 		ss << endl;
 	}
-	if (header & OPTIONAL_HEADER)
+	if (command & OPTIONAL_HEADER)
 	{
 		ss << "Optional Header:" << endl;
 		ss << endl;
@@ -322,129 +302,152 @@ string PortableExecutable::GetHeader(int header)
 		ss << "LoaderFlags:                 0x"; ss.width(8); ss.fill('0'); ss << hex << optionalHeader.LoaderFlags << endl;
 		ss << endl;
 	}
-	if (header & SECTION_HEADER)
+
+	if (endingSection == 0xFF)
+		endingSection = fileHeader.NumberOfSections;
+
+	for (int section = startingSection; section < endingSection; section++)
 	{
-		string padding("                             ");
-
-		ss << "Section #" << section + 1 << ": " << endl;
-		ss << endl;
-		ss << "Name:                        " << sectionHeaders[section].Name << endl;
-		ss << "VirtualSize:                 0x"; ss.width(8); ss.fill('0'); ss << hex << sectionHeaders[section].VirtualSize << endl;
-		ss << "VirtualAddress:              0x"; ss.width(8); ss.fill('0'); ss << hex << sectionHeaders[section].VirtualAddress << endl;
-		ss << "SizeOfRawData:               0x"; ss.width(8); ss.fill('0'); ss << hex << sectionHeaders[section].SizeOfRawData << endl;
-		ss << "PointerToRawData:            0x"; ss.width(8); ss.fill('0'); ss << hex << sectionHeaders[section].PointerToRawData << endl;
-		ss << "PointerToRelocations:        0x"; ss.width(8); ss.fill('0'); ss << hex << sectionHeaders[section].PointerToRelocations << endl;
-		ss << "PointerToLineNumbers:        0x"; ss.width(8); ss.fill('0'); ss << hex << sectionHeaders[section].PointerToLineNumbers << endl;
-		ss << "NumberOfRelocations:         0x"; ss.width(4); ss.fill('0'); ss << hex << sectionHeaders[section].NumberOfRelocations << endl;
-		ss << "NumberOfLineNumbers:         0x"; ss.width(4); ss.fill('0'); ss << hex << sectionHeaders[section].NumberOfLineNumbers << endl;
-		ss << "Characteristics:             ";
-		if (sectionHeaders[section].Characteristics & EXECUTABLE_SECTION_HEADER_NO_PAD)               ss << "No Pad" << endl << padding;
-		if (sectionHeaders[section].Characteristics & EXECUTABLE_SECTION_HEADER_CODE)                 ss << "Code" << endl << padding;
-		if (sectionHeaders[section].Characteristics & EXECUTABLE_SECTION_HEADER_INITIALIZED_DATA)     ss << "Initialized Data" << endl << padding;
-		if (sectionHeaders[section].Characteristics & EXECUTABLE_SECTION_HEADER_UNINITIALIZED_DATA)   ss << "Uninitialized Data" << endl << padding;
-		if (sectionHeaders[section].Characteristics & EXECUTABLE_SECTION_HEADER_OTHER)                ss << "Other" << endl << padding;
-		if (sectionHeaders[section].Characteristics & EXECUTABLE_SECTION_HEADER_INFO)                 ss << "Info" << endl << padding;
-		if (sectionHeaders[section].Characteristics & EXECUTABLE_SECTION_HEADER_REMOVE)               ss << "Remove" << endl << padding;
-		if (sectionHeaders[section].Characteristics & EXECUTABLE_SECTION_HEADER_COMDAT)               ss << "COMDAT" << endl << padding;
-		if (sectionHeaders[section].Characteristics & EXECUTABLE_SECTION_HEADER_NO_DEFER_SPEC_EXC)    ss << "No Defer Spec Exc" << endl << padding;
-		if (sectionHeaders[section].Characteristics & EXECUTABLE_SECTION_HEADER_SHORT)                ss << "Short" << endl << padding;
-		if (sectionHeaders[section].Characteristics & EXECUTABLE_SECTION_HEADER_PURGEABLE)            ss << "Purgeable" << endl << padding;
-		if (sectionHeaders[section].Characteristics & EXECUTABLE_SECTION_HEADER_LOCKED)               ss << "Locked" << endl << padding;
-		if (sectionHeaders[section].Characteristics & EXECUTABLE_SECTION_HEADER_PRELOAD)              ss << "Preload" << endl << padding;
-		if (sectionHeaders[section].Characteristics & EXECUTABLE_SECTION_HEADER_EXTENDED_RELOCATIONS) ss << "Extended Relocations" << endl << padding;
-		if (sectionHeaders[section].Characteristics & EXECUTABLE_SECTION_HEADER_DISCARDABLE)          ss << "Discardable" << endl << padding;
-		if (sectionHeaders[section].Characteristics & EXECUTABLE_SECTION_HEADER_NOT_CACHED)           ss << "Not Cached" << endl << padding;
-		if (sectionHeaders[section].Characteristics & EXECUTABLE_SECTION_HEADER_NOT_PAGED)            ss << "Not Paged" << endl << padding;
-		if (sectionHeaders[section].Characteristics & EXECUTABLE_SECTION_HEADER_SHARED)               ss << "Shared" << endl << padding;
-		if (sectionHeaders[section].Characteristics & EXECUTABLE_SECTION_HEADER_EXECUTE)              ss << "Execute" << endl << padding;
-		if (sectionHeaders[section].Characteristics & EXECUTABLE_SECTION_HEADER_READ)                 ss << "Read" << endl << padding;
-		if (sectionHeaders[section].Characteristics & EXECUTABLE_SECTION_HEADER_WRITE)                ss << "Write" << endl << padding;
-		ss << endl;
-	}
-	if (header & SECTION_DATA)
-	{
-		int numberOfLines;
-
-		numberOfLines = sectionHeaders[section].VirtualSize / 16;
-		if (sectionHeaders[section].VirtualSize % 16 != 0)
-			numberOfLines++;
-
-		ss << "Virtual Data: " << endl;
-		ss << endl;
-		for (int i = 0; i < (numberOfLines * 16); i++)
+		if (command & SECTION_HEADER)
 		{
-			if (i % 16 == 0)
-			{
-				ss << "0x";
-				ss.width(8);
-				ss.fill('0');
-				ss << hex << sectionHeaders[section].VirtualAddress + i << "  ";
-			}
-			if ((i + 1) % 16 == 0)
-			{
-				if (i < (int)sectionHeaders[section].VirtualSize && i < (int)sectionHeaders[section].SizeOfRawData)
-				{
-					ss.width(2);
-					ss.fill('0');
-					ss << hex << (int)sections[section].Data[i] << "  ";
-				}
-				else if (i < (int)sectionHeaders[section].VirtualSize && i >= (int)sectionHeaders[section].SizeOfRawData)
-					ss << "UU  ";
-				else
-					ss << "    ";
-				for (int j = (i + 1) - 16; j < (i + 1); j++)
-					if (j < (int)sectionHeaders[section].VirtualSize && j < (int)sectionHeaders[section].SizeOfRawData)
-						if (sections[section].Data[j] > 32 && sections[section].Data[j] < 127)
-							ss << sections[section].Data[j];
-						else
-							ss << ".";
-					else if (j < (int)sectionHeaders[section].VirtualSize && j >= (int)sectionHeaders[section].SizeOfRawData)
-						ss << ".";
-					else
-						ss << " ";
-				ss << endl;
-			}
-			else if ((i + 1) % 8 == 0)
-			{
-				if (i < (int)sectionHeaders[section].VirtualSize && i < (int)sectionHeaders[section].SizeOfRawData)
-				{
-					ss.width(2);
-					ss.fill('0');
-					ss << hex << (int)sections[section].Data[i] << "  ";
-				}
-				else if (i < (int)sectionHeaders[section].VirtualSize && i >= (int)sectionHeaders[section].SizeOfRawData)
-					ss << "UU  ";
-				else
-					ss << "    ";
-			}
-			else
-			{
-				if (i < (int)sectionHeaders[section].VirtualSize && i < (int)sectionHeaders[section].SizeOfRawData)
-				{
-					ss.width(2);
-					ss.fill('0');
-					ss << hex << (int)sections[section].Data[i] << " ";
-				}
-				else if (i < (int)sectionHeaders[section].VirtualSize && i >= (int)sectionHeaders[section].SizeOfRawData)
-					ss << "UU ";
-				else
-					ss << "   ";
-			}
+			string padding("                             ");
+
+			ss << "Section #" << section + 1 << ": " << endl;
+			ss << endl;
+			ss << "Name:                        " << sectionHeaders[section].Name << endl;
+			ss << "VirtualSize:                 0x"; ss.width(8); ss.fill('0'); ss << hex << sectionHeaders[section].VirtualSize << endl;
+			ss << "VirtualAddress:              0x"; ss.width(8); ss.fill('0'); ss << hex << sectionHeaders[section].VirtualAddress << endl;
+			ss << "SizeOfRawData:               0x"; ss.width(8); ss.fill('0'); ss << hex << sectionHeaders[section].SizeOfRawData << endl;
+			ss << "PointerToRawData:            0x"; ss.width(8); ss.fill('0'); ss << hex << sectionHeaders[section].PointerToRawData << endl;
+			ss << "PointerToRelocations:        0x"; ss.width(8); ss.fill('0'); ss << hex << sectionHeaders[section].PointerToRelocations << endl;
+			ss << "PointerToLineNumbers:        0x"; ss.width(8); ss.fill('0'); ss << hex << sectionHeaders[section].PointerToLineNumbers << endl;
+			ss << "NumberOfRelocations:         0x"; ss.width(4); ss.fill('0'); ss << hex << sectionHeaders[section].NumberOfRelocations << endl;
+			ss << "NumberOfLineNumbers:         0x"; ss.width(4); ss.fill('0'); ss << hex << sectionHeaders[section].NumberOfLineNumbers << endl;
+			ss << "Characteristics:             ";
+			if (sectionHeaders[section].Characteristics & EXECUTABLE_SECTION_HEADER_NO_PAD)               ss << "No Pad" << endl << padding;
+			if (sectionHeaders[section].Characteristics & EXECUTABLE_SECTION_HEADER_CODE)                 ss << "Code" << endl << padding;
+			if (sectionHeaders[section].Characteristics & EXECUTABLE_SECTION_HEADER_INITIALIZED_DATA)     ss << "Initialized Data" << endl << padding;
+			if (sectionHeaders[section].Characteristics & EXECUTABLE_SECTION_HEADER_UNINITIALIZED_DATA)   ss << "Uninitialized Data" << endl << padding;
+			if (sectionHeaders[section].Characteristics & EXECUTABLE_SECTION_HEADER_OTHER)                ss << "Other" << endl << padding;
+			if (sectionHeaders[section].Characteristics & EXECUTABLE_SECTION_HEADER_INFO)                 ss << "Info" << endl << padding;
+			if (sectionHeaders[section].Characteristics & EXECUTABLE_SECTION_HEADER_REMOVE)               ss << "Remove" << endl << padding;
+			if (sectionHeaders[section].Characteristics & EXECUTABLE_SECTION_HEADER_COMDAT)               ss << "COMDAT" << endl << padding;
+			if (sectionHeaders[section].Characteristics & EXECUTABLE_SECTION_HEADER_NO_DEFER_SPEC_EXC)    ss << "No Defer Spec Exc" << endl << padding;
+			if (sectionHeaders[section].Characteristics & EXECUTABLE_SECTION_HEADER_SHORT)                ss << "Short" << endl << padding;
+			if (sectionHeaders[section].Characteristics & EXECUTABLE_SECTION_HEADER_PURGEABLE)            ss << "Purgeable" << endl << padding;
+			if (sectionHeaders[section].Characteristics & EXECUTABLE_SECTION_HEADER_LOCKED)               ss << "Locked" << endl << padding;
+			if (sectionHeaders[section].Characteristics & EXECUTABLE_SECTION_HEADER_PRELOAD)              ss << "Preload" << endl << padding;
+			if (sectionHeaders[section].Characteristics & EXECUTABLE_SECTION_HEADER_EXTENDED_RELOCATIONS) ss << "Extended Relocations" << endl << padding;
+			if (sectionHeaders[section].Characteristics & EXECUTABLE_SECTION_HEADER_DISCARDABLE)          ss << "Discardable" << endl << padding;
+			if (sectionHeaders[section].Characteristics & EXECUTABLE_SECTION_HEADER_NOT_CACHED)           ss << "Not Cached" << endl << padding;
+			if (sectionHeaders[section].Characteristics & EXECUTABLE_SECTION_HEADER_NOT_PAGED)            ss << "Not Paged" << endl << padding;
+			if (sectionHeaders[section].Characteristics & EXECUTABLE_SECTION_HEADER_SHARED)               ss << "Shared" << endl << padding;
+			if (sectionHeaders[section].Characteristics & EXECUTABLE_SECTION_HEADER_EXECUTE)              ss << "Execute" << endl << padding;
+			if (sectionHeaders[section].Characteristics & EXECUTABLE_SECTION_HEADER_READ)                 ss << "Read" << endl << padding;
+			if (sectionHeaders[section].Characteristics & EXECUTABLE_SECTION_HEADER_WRITE)                ss << "Write" << endl << padding;
+			ss << endl;
 		}
-		ss << endl;
+		if (command & SECTION_DATA)
+		{
+			int numberOfLines;
+
+			numberOfLines = sectionHeaders[section].VirtualSize / 16;
+			if (sectionHeaders[section].VirtualSize % 16 != 0)
+				numberOfLines++;
+
+			ss << "Virtual Data: " << endl;
+			ss << endl;
+			for (int i = 0; i < (numberOfLines * 16); i++)
+			{
+				if (i % 16 == 0)
+				{
+					ss << "0x";
+					ss.width(8);
+					ss.fill('0');
+					ss << hex << sectionHeaders[section].VirtualAddress + i << "  ";
+				}
+				if ((i + 1) % 16 == 0)
+				{
+					if (i < (int)sectionHeaders[section].VirtualSize && i < (int)sectionHeaders[section].SizeOfRawData)
+					{
+						ss.width(2);
+						ss.fill('0');
+						ss << hex << (int)sections[section].Data[i] << "  ";
+					}
+					else if (i < (int)sectionHeaders[section].VirtualSize && i >= (int)sectionHeaders[section].SizeOfRawData)
+						ss << "UU  ";
+					else
+						ss << "    ";
+					for (int j = (i + 1) - 16; j < (i + 1); j++)
+						if (j < (int)sectionHeaders[section].VirtualSize && j < (int)sectionHeaders[section].SizeOfRawData)
+							if (sections[section].Data[j] > 32 && sections[section].Data[j] < 127)
+								ss << sections[section].Data[j];
+							else
+								ss << ".";
+						else if (j < (int)sectionHeaders[section].VirtualSize && j >= (int)sectionHeaders[section].SizeOfRawData)
+							ss << ".";
+						else
+							ss << " ";
+					ss << endl;
+				}
+				else if ((i + 1) % 8 == 0)
+				{
+					if (i < (int)sectionHeaders[section].VirtualSize && i < (int)sectionHeaders[section].SizeOfRawData)
+					{
+						ss.width(2);
+						ss.fill('0');
+						ss << hex << (int)sections[section].Data[i] << "  ";
+					}
+					else if (i < (int)sectionHeaders[section].VirtualSize && i >= (int)sectionHeaders[section].SizeOfRawData)
+						ss << "UU  ";
+					else
+						ss << "    ";
+				}
+				else
+				{
+					if (i < (int)sectionHeaders[section].VirtualSize && i < (int)sectionHeaders[section].SizeOfRawData)
+					{
+						ss.width(2);
+						ss.fill('0');
+						ss << hex << (int)sections[section].Data[i] << " ";
+					}
+					else if (i < (int)sectionHeaders[section].VirtualSize && i >= (int)sectionHeaders[section].SizeOfRawData)
+						ss << "UU ";
+					else
+						ss << "   ";
+				}
+			}
+			ss << endl;
+		}
 	}
 	return ss.str();
 }
-int PortableExecutable::NumberOfSections()
+void * PortableExecutable::GetHeader(int command)
 {
-	return fileHeader.NumberOfSections;
+	int section = (command >> 16) & 0xFFFF;
+
+	if (command & DOS_HEADER)
+		return &dosHeader;
+	else if (command & FILE_HEADER)
+		return &fileHeader;
+	else if (command & OPTIONAL_HEADER)
+		return &optionalHeader;
+	else if (command & SECTION_HEADER)
+		return &sectionHeaders[section];
+	else
+		return NULL;
 }
-Section PortableExecutable::GetSection(string sectionName)
+Section * PortableExecutable::GetSection(int sectionNumber)
 {
-	for (int i = 0; i < fileHeader.NumberOfSections; i++)
-		if (string((char *)sectionHeaders[i].Name) == sectionName)
-			return sections[i];
-	throw;
+	if (sectionNumber > 0 && sectionNumber < fileHeader.NumberOfSections)
+		return &sections[sectionNumber];
+	else
+		throw;
+}
+
+Section * PortableExecutable::GetSection(string sectionName)
+{
+	return GetSection(GetSectionNumber(sectionName));
 }
 int PortableExecutable::GetSectionNumber(string sectionName)
 {
