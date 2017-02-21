@@ -152,6 +152,7 @@ struct Section
 	unsigned long Length;
 };
 ```
+The first five structures are defined by Microsoft for Windows x86 portable executable files. For more information on these headers and their parameters, visit [this page](http://www.csn.ul.ie/~caolan/publink/winresdump/winresdump/doc/pefile2.html). The last structure holds the section data stored in the portable executable along with the size of the data.
 
 ### Example
 ```C++
@@ -166,3 +167,4 @@ int main()
 	return 0;
 }
 ```
+Usage is incredibly simple. Here, the executable `Test.exe` is loaded and all headers and section data is printed to the standard output stream.
