@@ -125,254 +125,253 @@ struct Section
 #define SECTION_HEADER		0x00000008
 #define SECTION_DATA		0x00000010
 
+using namespace std;
+
 class PortableExecutable
 {
 public:
-	PortableExecutable(std::string);
+	PortableExecutable();
+	PortableExecutable(string filename);
 
 	~PortableExecutable();
 
 	void Parse();
+	void Parse(string filename);
 
-	void SetFilename(std::string);
 	void Save();
-	void SaveAs(std::string);
+	void Save(string filename);
+
 	void PrintHeader(int);
-	std::string GetHeader(int);
+	string GetHeader(int);
+
 	int NumberOfSections();
-	Section GetSection(std::string);
-	int GetSectionNumber(std::string);
+
+	Section GetSection(string);
+	int GetSectionNumber(string);
 
 private:
-	std::string filename;
+	string filename;
+
 	EXECUTABLE_DOS_HEADER dosHeader;
 	EXECUTABLE_FILE_HEADER fileHeader;
 	EXECUTABLE_OPTIONAL_HEADER optionalHeader;
 	EXECUTABLE_SECTION_HEADER * sectionHeaders;
+
 	unsigned char * DOSProgram;
+
 	Section * sections;
 };
 
-PortableExecutable::PortableExecutable(std::string filename)
+PortableExecutable::PortableExecutable()
+{
+
+}
+PortableExecutable::PortableExecutable(string filename)
 {
 	this->filename = filename;
 }
 PortableExecutable::~PortableExecutable()
 {
-	delete[] this->DOSProgram;
-	for (int i = 0; i < this->fileHeader.NumberOfSections; i++)
-		delete[] this->sections[i].Data;
-	delete[] this->sectionHeaders;
-	delete[] this->sections;
+	delete[] DOSProgram;
+	for (int i = 0; i < fileHeader.NumberOfSections; i++)
+		delete[] sections[i].Data;
+	delete[] sectionHeaders;
+	delete[] sections;
 }
 void PortableExecutable::Parse()
 {
-	std::ifstream ifile(this->filename, std::ios::binary);
-
-	ifile.read((char *)&this->dosHeader, sizeof(EXECUTABLE_DOS_HEADER));
-
-	this->DOSProgram = new unsigned char[this->dosHeader.AddressOfNewEXEHeader - sizeof(EXECUTABLE_DOS_HEADER)];
-
-	ifile.read((char *)this->DOSProgram, this->dosHeader.AddressOfNewEXEHeader - sizeof(EXECUTABLE_DOS_HEADER));
-
-	ifile.read((char *)&this->fileHeader, sizeof(EXECUTABLE_FILE_HEADER));
-
-	ifile.read((char *)&this->optionalHeader, sizeof(EXECUTABLE_OPTIONAL_HEADER));
-
-	this->sectionHeaders = new EXECUTABLE_SECTION_HEADER[this->fileHeader.NumberOfSections];
-
-	for (int i = 0; i < this->fileHeader.NumberOfSections; i++)
-		ifile.read((char *)&this->sectionHeaders[i], sizeof(EXECUTABLE_SECTION_HEADER));
-
-	this->sections = new Section[this->fileHeader.NumberOfSections];
-
-	for (int i = 0; i < this->fileHeader.NumberOfSections; i++)
-	{
-		this->sections[i].Data = new unsigned char[this->sectionHeaders[i].SizeOfRawData];
-		this->sections[i].Length = this->sectionHeaders[i].SizeOfRawData;
-		int j = 0;
-		ifile.seekg(this->sectionHeaders[i].PointerToRawData);
-		while (ifile.tellg() < this->sectionHeaders[i].PointerToRawData + this->sectionHeaders[i].SizeOfRawData)
-			ifile.read((char *)&this->sections[i].Data[j++], sizeof(unsigned char));
-	}
+	Parse(filename);
 }
-void PortableExecutable::SetFilename(std::string filename)
+void PortableExecutable::Parse(string filename)
 {
 	this->filename = filename;
+
+	ifstream ifile(filename, ios::binary);
+
+	ifile.read((char *)&dosHeader, sizeof(EXECUTABLE_DOS_HEADER));
+
+	DOSProgram = new unsigned char[dosHeader.AddressOfNewEXEHeader - sizeof(EXECUTABLE_DOS_HEADER)];
+
+	ifile.read((char *)DOSProgram, dosHeader.AddressOfNewEXEHeader - sizeof(EXECUTABLE_DOS_HEADER));
+
+	ifile.read((char *)&fileHeader, sizeof(EXECUTABLE_FILE_HEADER));
+
+	ifile.read((char *)&optionalHeader, sizeof(EXECUTABLE_OPTIONAL_HEADER));
+
+	sectionHeaders = new EXECUTABLE_SECTION_HEADER[fileHeader.NumberOfSections];
+
+	for (int i = 0; i < fileHeader.NumberOfSections; i++)
+		ifile.read((char *)&sectionHeaders[i], sizeof(EXECUTABLE_SECTION_HEADER));
+
+	sections = new Section[fileHeader.NumberOfSections];
+
+	for (int i = 0; i < fileHeader.NumberOfSections; i++)
+	{
+		sections[i].Data = new unsigned char[sectionHeaders[i].SizeOfRawData];
+		sections[i].Length = sectionHeaders[i].SizeOfRawData;
+		int j = 0;
+		ifile.seekg(sectionHeaders[i].PointerToRawData);
+		while (ifile.tellg() < sectionHeaders[i].PointerToRawData + sectionHeaders[i].SizeOfRawData)
+			ifile.read((char *)&sections[i].Data[j++], sizeof(unsigned char));
+	}
 }
 void PortableExecutable::Save()
 {
-	this->SaveAs(this->filename);
+	Save(filename);
 }
-void PortableExecutable::SaveAs(std::string filename)
+void PortableExecutable::Save(string filename)
 {
-	std::ofstream ofile(filename, std::ios::binary);
+	this->filename = filename;
 
-	ofile.write((char *)&this->dosHeader, sizeof(EXECUTABLE_DOS_HEADER));
+	ofstream ofile(filename, ios::binary);
 
-	ofile.write((char *)this->DOSProgram, this->dosHeader.AddressOfNewEXEHeader - sizeof(EXECUTABLE_DOS_HEADER));
+	ofile.write((char *)&dosHeader, sizeof(EXECUTABLE_DOS_HEADER));
 
-	ofile.write((char *)&this->fileHeader, sizeof(EXECUTABLE_FILE_HEADER));
+	ofile.write((char *)DOSProgram, dosHeader.AddressOfNewEXEHeader - sizeof(EXECUTABLE_DOS_HEADER));
 
-	ofile.write((char *)&this->optionalHeader, sizeof(EXECUTABLE_OPTIONAL_HEADER));
+	ofile.write((char *)&fileHeader, sizeof(EXECUTABLE_FILE_HEADER));
 
-	for (int i = 0; i < this->fileHeader.NumberOfSections; i++)
-		ofile.write((char *)&this->sectionHeaders[i], sizeof(EXECUTABLE_SECTION_HEADER));
+	ofile.write((char *)&optionalHeader, sizeof(EXECUTABLE_OPTIONAL_HEADER));
 
-	for (int i = 0; i < this->fileHeader.NumberOfSections; i++)
+	for (int i = 0; i < fileHeader.NumberOfSections; i++)
+		ofile.write((char *)&sectionHeaders[i], sizeof(EXECUTABLE_SECTION_HEADER));
+
+	for (int i = 0; i < fileHeader.NumberOfSections; i++)
 	{
 		int j = 0;
-		ofile.seekp(this->sectionHeaders[i].PointerToRawData);
-		while (ofile.tellp() < this->sectionHeaders[i].PointerToRawData + this->sectionHeaders[i].SizeOfRawData)
-			ofile.write((char *)&this->sections[i].Data[j++], sizeof(unsigned char));
+		ofile.seekp(sectionHeaders[i].PointerToRawData);
+		while (ofile.tellp() < sectionHeaders[i].PointerToRawData + sectionHeaders[i].SizeOfRawData)
+			ofile.write((char *)&sections[i].Data[j++], sizeof(unsigned char));
 	}
 }
 void PortableExecutable::PrintHeader(int header)
 {
-	std::cout << this->GetHeader(header);
+	cout << GetHeader(header);
 }
-std::string PortableExecutable::GetHeader(int header)
+string PortableExecutable::GetHeader(int header)
 {
-	std::stringstream ss;
+	stringstream ss;
 	int section = (header >> 16) & 0xFFFF;
 	if (header & DOS_HEADER)
 	{
-		ss << "Dos Header:" << std::endl;
-		ss << std::endl;
-		ss << "MagicNumber:                 " << std::hex << "0x"; ss.width(8); ss.fill('0'); ss << (unsigned long)this->dosHeader.MagicNumber << std::endl;
-		ss << "UsedBytesInTheLastPage:      " << std::hex << "0x"; ss.width(8); ss.fill('0'); ss << (unsigned long)this->dosHeader.UsedBytesInTheLastPage << std::endl;
-		ss << "FileSizeInPages:             " << std::hex << "0x"; ss.width(8); ss.fill('0'); ss << (unsigned long)this->dosHeader.FileSizeInPages << std::endl;
-		ss << "NumberOfRelocationItems:     " << std::hex << "0x"; ss.width(8); ss.fill('0'); ss << (unsigned long)this->dosHeader.NumberOfRelocationItems << std::endl;
-		ss << "HeaderSizeInParagraphs:      " << std::hex << "0x"; ss.width(8); ss.fill('0'); ss << (unsigned long)this->dosHeader.HeaderSizeInParagraphs << std::endl;
-		ss << "MinimumExtraParagraphs:      " << std::hex << "0x"; ss.width(8); ss.fill('0'); ss << (unsigned long)this->dosHeader.MinimumExtraParagraphs << std::endl;
-		ss << "MaximumExtraParagraphs:      " << std::hex << "0x"; ss.width(8); ss.fill('0'); ss << (unsigned long)this->dosHeader.MaximumExtraParagraphs << std::endl;
-		ss << "InitialRelativeSS:           " << std::hex << "0x"; ss.width(8); ss.fill('0'); ss << (unsigned long)this->dosHeader.InitialRelativeSS << std::endl;
-		ss << "InitialSP:                   " << std::hex << "0x"; ss.width(8); ss.fill('0'); ss << (unsigned long)this->dosHeader.InitialSP << std::endl;
-		ss << "Checksum:                    " << std::hex << "0x"; ss.width(8); ss.fill('0'); ss << (unsigned long)this->dosHeader.Checksum << std::endl;
-		ss << "InitialIP:                   " << std::hex << "0x"; ss.width(8); ss.fill('0'); ss << (unsigned long)this->dosHeader.InitialIP << std::endl;
-		ss << "InitialRelativeCS:           " << std::hex << "0x"; ss.width(8); ss.fill('0'); ss << (unsigned long)this->dosHeader.InitialRelativeCS << std::endl;
-		ss << "AddressOfRelocationTable:    " << std::hex << "0x"; ss.width(8); ss.fill('0'); ss << (unsigned long)this->dosHeader.AddressOfRelocationTable << std::endl;
-		ss << "OverlayNumber:               " << std::hex << "0x"; ss.width(8); ss.fill('0'); ss << (unsigned long)this->dosHeader.OverlayNumber << std::endl;
-		ss << "OEMID:                       " << std::hex << "0x"; ss.width(8); ss.fill('0'); ss << (unsigned long)this->dosHeader.OEMID << std::endl;
-		ss << "OEMInfo:                     " << std::hex << "0x"; ss.width(8); ss.fill('0'); ss << (unsigned long)this->dosHeader.OEMInfo << std::endl;
-		ss << "AddressOfNewEXEHeader:       " << std::hex << "0x"; ss.width(8); ss.fill('0'); ss << (unsigned long)this->dosHeader.AddressOfNewEXEHeader << std::endl;
-		ss << std::endl;
+		ss << "Dos Header:" << endl;
+		ss << endl;
+		ss << "MagicNumber:                 " << hex << "0x"; ss.width(4); ss.fill('0'); ss << dosHeader.MagicNumber << endl;
+		ss << "UsedBytesInTheLastPage:      " << hex << "0x"; ss.width(4); ss.fill('0'); ss << dosHeader.UsedBytesInTheLastPage << endl;
+		ss << "FileSizeInPages:             " << hex << "0x"; ss.width(4); ss.fill('0'); ss << dosHeader.FileSizeInPages << endl;
+		ss << "NumberOfRelocationItems:     " << hex << "0x"; ss.width(4); ss.fill('0'); ss << dosHeader.NumberOfRelocationItems << endl;
+		ss << "HeaderSizeInParagraphs:      " << hex << "0x"; ss.width(4); ss.fill('0'); ss << dosHeader.HeaderSizeInParagraphs << endl;
+		ss << "MinimumExtraParagraphs:      " << hex << "0x"; ss.width(4); ss.fill('0'); ss << dosHeader.MinimumExtraParagraphs << endl;
+		ss << "MaximumExtraParagraphs:      " << hex << "0x"; ss.width(4); ss.fill('0'); ss << dosHeader.MaximumExtraParagraphs << endl;
+		ss << "InitialRelativeSS:           " << hex << "0x"; ss.width(4); ss.fill('0'); ss << dosHeader.InitialRelativeSS << endl;
+		ss << "InitialSP:                   " << hex << "0x"; ss.width(4); ss.fill('0'); ss << dosHeader.InitialSP << endl;
+		ss << "Checksum:                    " << hex << "0x"; ss.width(4); ss.fill('0'); ss << dosHeader.Checksum << endl;
+		ss << "InitialIP:                   " << hex << "0x"; ss.width(4); ss.fill('0'); ss << dosHeader.InitialIP << endl;
+		ss << "InitialRelativeCS:           " << hex << "0x"; ss.width(4); ss.fill('0'); ss << dosHeader.InitialRelativeCS << endl;
+		ss << "AddressOfRelocationTable:    " << hex << "0x"; ss.width(4); ss.fill('0'); ss << dosHeader.AddressOfRelocationTable << endl;
+		ss << "OverlayNumber:               " << hex << "0x"; ss.width(4); ss.fill('0'); ss << dosHeader.OverlayNumber << endl;
+		ss << "OEMID:                       " << hex << "0x"; ss.width(4); ss.fill('0'); ss << dosHeader.OEMID << endl;
+		ss << "OEMInfo:                     " << hex << "0x"; ss.width(4); ss.fill('0'); ss << dosHeader.OEMInfo << endl;
+		ss << "AddressOfNewEXEHeader:       " << hex << "0x"; ss.width(8); ss.fill('0'); ss << dosHeader.AddressOfNewEXEHeader << endl;
+		ss << endl;
 	}
 	if (header & FILE_HEADER)
 	{
-		ss << "File Header:" << std::endl;
-		ss << std::endl;
-		ss << "FileType:                    " << (unsigned char *)&this->fileHeader.FileType << std::endl;
-		ss << "Machine:                     " << std::hex << "0x"; ss.width(8); ss.fill('0'); ss << (unsigned long)this->fileHeader.Machine << std::endl;
-		ss << "NumberOfSections:            " << std::hex << "0x"; ss.width(8); ss.fill('0'); ss << (unsigned long)this->fileHeader.NumberOfSections << std::endl;
-		ss << "TimeDateStamp:               " << std::hex << "0x"; ss.width(8); ss.fill('0'); ss << (unsigned long)this->fileHeader.TimeDateStamp << std::endl;
-		ss << "PointToSymbolTable:          " << std::hex << "0x"; ss.width(8); ss.fill('0'); ss << (unsigned long)this->fileHeader.PointToSymbolTable << std::endl;
-		ss << "NumberOfSymbols:             " << std::hex << "0x"; ss.width(8); ss.fill('0'); ss << (unsigned long)this->fileHeader.NumberOfSymbols << std::endl;
-		ss << "SizeOfOptionalHeader:        " << std::hex << "0x"; ss.width(8); ss.fill('0'); ss << (unsigned long)this->fileHeader.SizeOfOptionalHeader << std::endl;
-		ss << "Characteristics:             " << std::hex << "0x"; ss.width(8); ss.fill('0'); ss << (unsigned long)this->fileHeader.Characteristics << std::endl;
-		ss << std::endl;
+		ss << "File Header:" << endl;
+		ss << endl;
+		ss << "FileType:                    " << (unsigned char *)&fileHeader.FileType << endl;
+		ss << "Machine:                     " << hex << "0x"; ss.width(4); ss.fill('0'); ss << fileHeader.Machine << endl;
+		ss << "NumberOfSections:            " << hex << "0x"; ss.width(4); ss.fill('0'); ss << fileHeader.NumberOfSections << endl;
+		ss << "TimeDateStamp:               " << hex << "0x"; ss.width(8); ss.fill('0'); ss << fileHeader.TimeDateStamp << endl;
+		ss << "PointToSymbolTable:          " << hex << "0x"; ss.width(8); ss.fill('0'); ss << fileHeader.PointToSymbolTable << endl;
+		ss << "NumberOfSymbols:             " << hex << "0x"; ss.width(8); ss.fill('0'); ss << fileHeader.NumberOfSymbols << endl;
+		ss << "SizeOfOptionalHeader:        " << hex << "0x"; ss.width(4); ss.fill('0'); ss << fileHeader.SizeOfOptionalHeader << endl;
+		ss << "Characteristics:             " << hex << "0x"; ss.width(4); ss.fill('0'); ss << fileHeader.Characteristics << endl;
+		ss << endl;
 	}
 	if (header & OPTIONAL_HEADER)
 	{
-		ss << "Optional Header:" << std::endl;
-		ss << std::endl;
-		ss << "MagicNumber:                 " << std::hex << "0x"; ss.width(8); ss.fill('0'); ss << (unsigned long)this->optionalHeader.Magic << std::endl;
-		ss << "MajorLinkerVersion:          " << std::hex << "0x"; ss.width(8); ss.fill('0'); ss << (unsigned long)this->optionalHeader.MajorLinkerVersion << std::endl;
-		ss << "MinorLinkerVersion:          " << std::hex << "0x"; ss.width(8); ss.fill('0'); ss << (unsigned long)this->optionalHeader.MinorLinkerVersion << std::endl;
-		ss << "SizeOfCode:                  " << std::hex << "0x"; ss.width(8); ss.fill('0'); ss << (unsigned long)this->optionalHeader.SizeOfCode << std::endl;
-		ss << "SizeOfInitializedData:       " << std::hex << "0x"; ss.width(8); ss.fill('0'); ss << (unsigned long)this->optionalHeader.SizeOfInitializedData << std::endl;
-		ss << "SizeOfUnInitializedData:     " << std::hex << "0x"; ss.width(8); ss.fill('0'); ss << (unsigned long)this->optionalHeader.SizeOfUninitializedData << std::endl;
-		ss << "AddressOfEntryPoint:         " << std::hex << "0x"; ss.width(8); ss.fill('0'); ss << (unsigned long)this->optionalHeader.AddressOfEntryPoint << std::endl;
-		ss << "BaseOfCode:                  " << std::hex << "0x"; ss.width(8); ss.fill('0'); ss << (unsigned long)this->optionalHeader.BaseOfCode << std::endl;
-		ss << "BaseOfData:                  " << std::hex << "0x"; ss.width(8); ss.fill('0'); ss << (unsigned long)this->optionalHeader.BaseOfData << std::endl;
-		ss << "ImageBase:                   " << std::hex << "0x"; ss.width(8); ss.fill('0'); ss << (unsigned long)this->optionalHeader.ImageBase << std::endl;
-		ss << "SectionAlignment:            " << std::hex << "0x"; ss.width(8); ss.fill('0'); ss << (unsigned long)this->optionalHeader.SectionAlignment << std::endl;
-		ss << "FileAlignment:               " << std::hex << "0x"; ss.width(8); ss.fill('0'); ss << (unsigned long)this->optionalHeader.FileAlignment << std::endl;
-		ss << "MajorOperatingSystemVersion: " << std::hex << "0x"; ss.width(8); ss.fill('0'); ss << (unsigned long)this->optionalHeader.MajorOperatingSystemVersion << std::endl;
-		ss << "MinorOperatingSystemVersion: " << std::hex << "0x"; ss.width(8); ss.fill('0'); ss << (unsigned long)this->optionalHeader.MinorOperatingSystemVersion << std::endl;
-		ss << "MajorImageVersion:           " << std::hex << "0x"; ss.width(8); ss.fill('0'); ss << (unsigned long)this->optionalHeader.MajorImageVersion << std::endl;
-		ss << "MinorImageVersion:           " << std::hex << "0x"; ss.width(8); ss.fill('0'); ss << (unsigned long)this->optionalHeader.MinorImageVersion << std::endl;
-		ss << "MajorSubsystemVersion:       " << std::hex << "0x"; ss.width(8); ss.fill('0'); ss << (unsigned long)this->optionalHeader.MajorSubsystemVersion << std::endl;
-		ss << "MinorSubsystemVersion:       " << std::hex << "0x"; ss.width(8); ss.fill('0'); ss << (unsigned long)this->optionalHeader.MinorImageVersion << std::endl;
-		ss << "SizeOfImage:                 " << std::hex << "0x"; ss.width(8); ss.fill('0'); ss << (unsigned long)this->optionalHeader.SizeOfImage << std::endl;
-		ss << "SizeOfHeaders:               " << std::hex << "0x"; ss.width(8); ss.fill('0'); ss << (unsigned long)this->optionalHeader.SizeOfHeaders << std::endl;
-		ss << "Checksum:                    " << std::hex << "0x"; ss.width(8); ss.fill('0'); ss << (unsigned long)this->optionalHeader.CheckSum << std::endl;
-		ss << "DllCharacteristics:          " << std::hex << "0x"; ss.width(8); ss.fill('0'); ss << (unsigned long)this->optionalHeader.DllCharacteristics << std::endl;
-		ss << "SizeOfStackReserve:          " << std::hex << "0x"; ss.width(8); ss.fill('0'); ss << (unsigned long)this->optionalHeader.SizeOfStackReserve << std::endl;
-		ss << "SizeOfStackCommit:           " << std::hex << "0x"; ss.width(8); ss.fill('0'); ss << (unsigned long)this->optionalHeader.SizeOfStackCommit << std::endl;
-		ss << "SizeOfHeapReserve:           " << std::hex << "0x"; ss.width(8); ss.fill('0'); ss << (unsigned long)this->optionalHeader.SizeOfHeapReserve << std::endl;
-		ss << "SizeOfHeapCommit:            " << std::hex << "0x"; ss.width(8); ss.fill('0'); ss << (unsigned long)this->optionalHeader.SizeOfHeapCommit << std::endl;
-		ss << "LoaderFlags:                 " << std::hex << "0x"; ss.width(8); ss.fill('0'); ss << (unsigned long)this->optionalHeader.LoaderFlags << std::endl;
-		ss << std::endl;
+		ss << "Optional Header:" << endl;
+		ss << endl;
+		ss << "MagicNumber:                 " << hex << "0x"; ss.width(4); ss.fill('0'); ss << optionalHeader.Magic << endl;
+		ss << "MajorLinkerVersion:          " << hex << "0x"; ss.width(2); ss.fill('0'); ss << (unsigned short)optionalHeader.MajorLinkerVersion << endl;
+		ss << "MinorLinkerVersion:          " << hex << "0x"; ss.width(2); ss.fill('0'); ss << (unsigned short)optionalHeader.MinorLinkerVersion << endl;
+		ss << "SizeOfCode:                  " << hex << "0x"; ss.width(8); ss.fill('0'); ss << optionalHeader.SizeOfCode << endl;
+		ss << "SizeOfInitializedData:       " << hex << "0x"; ss.width(8); ss.fill('0'); ss << optionalHeader.SizeOfInitializedData << endl;
+		ss << "SizeOfUnInitializedData:     " << hex << "0x"; ss.width(8); ss.fill('0'); ss << optionalHeader.SizeOfUninitializedData << endl;
+		ss << "AddressOfEntryPoint:         " << hex << "0x"; ss.width(8); ss.fill('0'); ss << optionalHeader.AddressOfEntryPoint << endl;
+		ss << "BaseOfCode:                  " << hex << "0x"; ss.width(8); ss.fill('0'); ss << optionalHeader.BaseOfCode << endl;
+		ss << "BaseOfData:                  " << hex << "0x"; ss.width(8); ss.fill('0'); ss << optionalHeader.BaseOfData << endl;
+		ss << "ImageBase:                   " << hex << "0x"; ss.width(8); ss.fill('0'); ss << optionalHeader.ImageBase << endl;
+		ss << "SectionAlignment:            " << hex << "0x"; ss.width(8); ss.fill('0'); ss << optionalHeader.SectionAlignment << endl;
+		ss << "FileAlignment:               " << hex << "0x"; ss.width(8); ss.fill('0'); ss << optionalHeader.FileAlignment << endl;
+		ss << "MajorOperatingSystemVersion: " << hex << "0x"; ss.width(4); ss.fill('0'); ss << optionalHeader.MajorOperatingSystemVersion << endl;
+		ss << "MinorOperatingSystemVersion: " << hex << "0x"; ss.width(4); ss.fill('0'); ss << optionalHeader.MinorOperatingSystemVersion << endl;
+		ss << "MajorImageVersion:           " << hex << "0x"; ss.width(4); ss.fill('0'); ss << optionalHeader.MajorImageVersion << endl;
+		ss << "MinorImageVersion:           " << hex << "0x"; ss.width(4); ss.fill('0'); ss << optionalHeader.MinorImageVersion << endl;
+		ss << "MajorSubsystemVersion:       " << hex << "0x"; ss.width(4); ss.fill('0'); ss << optionalHeader.MajorSubsystemVersion << endl;
+		ss << "MinorSubsystemVersion:       " << hex << "0x"; ss.width(4); ss.fill('0'); ss << optionalHeader.MinorSubsystemVersion << endl;
+		ss << "SizeOfImage:                 " << hex << "0x"; ss.width(8); ss.fill('0'); ss << optionalHeader.SizeOfImage << endl;
+		ss << "SizeOfHeaders:               " << hex << "0x"; ss.width(8); ss.fill('0'); ss << optionalHeader.SizeOfHeaders << endl;
+		ss << "Checksum:                    " << hex << "0x"; ss.width(8); ss.fill('0'); ss << optionalHeader.CheckSum << endl;
+		ss << "SubSystem:                   " << hex << "0x"; ss.width(4); ss.fill('0'); ss << optionalHeader.SubSystem << endl;
+		ss << "DllCharacteristics:          " << hex << "0x"; ss.width(4); ss.fill('0'); ss << optionalHeader.DllCharacteristics << endl;
+		ss << "SizeOfStackReserve:          " << hex << "0x"; ss.width(8); ss.fill('0'); ss << optionalHeader.SizeOfStackReserve << endl;
+		ss << "SizeOfStackCommit:           " << hex << "0x"; ss.width(8); ss.fill('0'); ss << optionalHeader.SizeOfStackCommit << endl;
+		ss << "SizeOfHeapReserve:           " << hex << "0x"; ss.width(8); ss.fill('0'); ss << optionalHeader.SizeOfHeapReserve << endl;
+		ss << "SizeOfHeapCommit:            " << hex << "0x"; ss.width(8); ss.fill('0'); ss << optionalHeader.SizeOfHeapCommit << endl;
+		ss << "LoaderFlags:                 " << hex << "0x"; ss.width(8); ss.fill('0'); ss << optionalHeader.LoaderFlags << endl;
+		ss << endl;
 	}
 	if (header & SECTION_HEADER)
 	{
-		ss << "Section #" << section + 1 << ": " << std::endl;
-		ss << std::endl;
-		ss << "Name:                        " << this->sectionHeaders[section].Name << std::endl;
-		ss << "VirtualSize:                 " << std::hex << "0x"; ss.width(8); ss.fill('0'); ss << (unsigned long)this->sectionHeaders[section].VirtualSize << std::endl;
-		ss << "VirtualAddress:              " << std::hex << "0x"; ss.width(8); ss.fill('0'); ss << (unsigned long)this->sectionHeaders[section].VirtualAddress << std::endl;
-		ss << "SizeOfRawData:               " << std::hex << "0x"; ss.width(8); ss.fill('0'); ss << (unsigned long)this->sectionHeaders[section].SizeOfRawData << std::endl;
-		ss << "PointerToRawData:            " << std::hex << "0x"; ss.width(8); ss.fill('0'); ss << (unsigned long)this->sectionHeaders[section].PointerToRawData << std::endl;
-		ss << "PointerToRelocations:        " << std::hex << "0x"; ss.width(8); ss.fill('0'); ss << (unsigned long)this->sectionHeaders[section].PointerToRelocations << std::endl;
-		ss << "PointerToLineNumbers:        " << std::hex << "0x"; ss.width(8); ss.fill('0'); ss << (unsigned long)this->sectionHeaders[section].PointerToLineNumbers << std::endl;
-		ss << "NumberOfRelocations:         " << std::hex << "0x"; ss.width(8); ss.fill('0'); ss << (unsigned long)this->sectionHeaders[section].NumberOfRelocations << std::endl;
-		ss << "NumberOfLineNumbers:         " << std::hex << "0x"; ss.width(8); ss.fill('0'); ss << (unsigned long)this->sectionHeaders[section].NumberOfLineNumbers << std::endl;
+		string padding("                             ");
+
+		ss << "Section #" << section + 1 << ": " << endl;
+		ss << endl;
+		ss << "Name:                        " << sectionHeaders[section].Name << endl;
+		ss << "VirtualSize:                 " << hex << "0x"; ss.width(8); ss.fill('0'); ss << sectionHeaders[section].VirtualSize << endl;
+		ss << "VirtualAddress:              " << hex << "0x"; ss.width(8); ss.fill('0'); ss << sectionHeaders[section].VirtualAddress << endl;
+		ss << "SizeOfRawData:               " << hex << "0x"; ss.width(8); ss.fill('0'); ss << sectionHeaders[section].SizeOfRawData << endl;
+		ss << "PointerToRawData:            " << hex << "0x"; ss.width(8); ss.fill('0'); ss << sectionHeaders[section].PointerToRawData << endl;
+		ss << "PointerToRelocations:        " << hex << "0x"; ss.width(8); ss.fill('0'); ss << sectionHeaders[section].PointerToRelocations << endl;
+		ss << "PointerToLineNumbers:        " << hex << "0x"; ss.width(8); ss.fill('0'); ss << sectionHeaders[section].PointerToLineNumbers << endl;
+		ss << "NumberOfRelocations:         " << hex << "0x"; ss.width(4); ss.fill('0'); ss << sectionHeaders[section].NumberOfRelocations << endl;
+		ss << "NumberOfLineNumbers:         " << hex << "0x"; ss.width(4); ss.fill('0'); ss << sectionHeaders[section].NumberOfLineNumbers << endl;
 		ss << "Characteristics:             ";
-		if (this->sectionHeaders[section].Characteristics & EXECUTABLE_SECTION_HEADER_NO_PAD)
-			ss << "No Pad" << std::endl << "                             ";
-		if (this->sectionHeaders[section].Characteristics & EXECUTABLE_SECTION_HEADER_CODE)
-			ss << "Code" << std::endl << "                             ";
-		if (this->sectionHeaders[section].Characteristics & EXECUTABLE_SECTION_HEADER_INITIALIZED_DATA)
-			ss << "Initialized Data" << std::endl << "                             ";
-		if (this->sectionHeaders[section].Characteristics & EXECUTABLE_SECTION_HEADER_UNINITIALIZED_DATA)
-			ss << "Uninitialized Data" << std::endl << "                             ";
-		if (this->sectionHeaders[section].Characteristics & EXECUTABLE_SECTION_HEADER_OTHER)
-			ss << "Other" << std::endl << "                             ";
-		if (this->sectionHeaders[section].Characteristics & EXECUTABLE_SECTION_HEADER_INFO)
-			ss << "Info" << std::endl << "                             ";
-		if (this->sectionHeaders[section].Characteristics & EXECUTABLE_SECTION_HEADER_REMOVE)
-			ss << "Remove" << std::endl << "                             ";
-		if (this->sectionHeaders[section].Characteristics & EXECUTABLE_SECTION_HEADER_COMDAT)
-			ss << "COMDAT" << std::endl << "                             ";
-		if (this->sectionHeaders[section].Characteristics & EXECUTABLE_SECTION_HEADER_NO_DEFER_SPEC_EXC)
-			ss << "No Defer Spec Exc" << std::endl << "                             ";
-		if (this->sectionHeaders[section].Characteristics & EXECUTABLE_SECTION_HEADER_SHORT)
-			ss << "Short" << std::endl << "                             ";
-		if (this->sectionHeaders[section].Characteristics & EXECUTABLE_SECTION_HEADER_PURGEABLE)
-			ss << "Purgeable" << std::endl << "                             ";
-		if (this->sectionHeaders[section].Characteristics & EXECUTABLE_SECTION_HEADER_LOCKED)
-			ss << "Locked" << std::endl << "                             ";
-		if (this->sectionHeaders[section].Characteristics & EXECUTABLE_SECTION_HEADER_PRELOAD)
-			ss << "Preload" << std::endl << "                             ";
-		if (this->sectionHeaders[section].Characteristics & EXECUTABLE_SECTION_HEADER_EXTENDED_RELOCATIONS)
-			ss << "Extended Relocations" << std::endl << "                             ";
-		if (this->sectionHeaders[section].Characteristics & EXECUTABLE_SECTION_HEADER_DISCARDABLE)
-			ss << "Discardable" << std::endl << "                             ";
-		if (this->sectionHeaders[section].Characteristics & EXECUTABLE_SECTION_HEADER_NOT_CACHED)
-			ss << "Not Cached" << std::endl << "                             ";
-		if (this->sectionHeaders[section].Characteristics & EXECUTABLE_SECTION_HEADER_NOT_PAGED)
-			ss << "Not Paged" << std::endl << "                             ";
-		if (this->sectionHeaders[section].Characteristics & EXECUTABLE_SECTION_HEADER_SHARED)
-			ss << "Shared" << std::endl << "                             ";
-		if (this->sectionHeaders[section].Characteristics & EXECUTABLE_SECTION_HEADER_EXECUTE)
-			ss << "Execute" << std::endl << "                             ";
-		if (this->sectionHeaders[section].Characteristics & EXECUTABLE_SECTION_HEADER_READ)
-			ss << "Read" << std::endl << "                             ";
-		if (this->sectionHeaders[section].Characteristics & EXECUTABLE_SECTION_HEADER_WRITE)
-			ss << "Write" << std::endl << "                             ";
-		ss << std::endl;
+		if (sectionHeaders[section].Characteristics & EXECUTABLE_SECTION_HEADER_NO_PAD)               ss << "No Pad" << endl << padding;
+		if (sectionHeaders[section].Characteristics & EXECUTABLE_SECTION_HEADER_CODE)                 ss << "Code" << endl << padding;
+		if (sectionHeaders[section].Characteristics & EXECUTABLE_SECTION_HEADER_INITIALIZED_DATA)     ss << "Initialized Data" << endl << padding;
+		if (sectionHeaders[section].Characteristics & EXECUTABLE_SECTION_HEADER_UNINITIALIZED_DATA)   ss << "Uninitialized Data" << endl << padding;
+		if (sectionHeaders[section].Characteristics & EXECUTABLE_SECTION_HEADER_OTHER)                ss << "Other" << endl << padding;
+		if (sectionHeaders[section].Characteristics & EXECUTABLE_SECTION_HEADER_INFO)                 ss << "Info" << endl << padding;
+		if (sectionHeaders[section].Characteristics & EXECUTABLE_SECTION_HEADER_REMOVE)               ss << "Remove" << endl << padding;
+		if (sectionHeaders[section].Characteristics & EXECUTABLE_SECTION_HEADER_COMDAT)               ss << "COMDAT" << endl << padding;
+		if (sectionHeaders[section].Characteristics & EXECUTABLE_SECTION_HEADER_NO_DEFER_SPEC_EXC)    ss << "No Defer Spec Exc" << endl << padding;
+		if (sectionHeaders[section].Characteristics & EXECUTABLE_SECTION_HEADER_SHORT)                ss << "Short" << endl << padding;
+		if (sectionHeaders[section].Characteristics & EXECUTABLE_SECTION_HEADER_PURGEABLE)            ss << "Purgeable" << endl << padding;
+		if (sectionHeaders[section].Characteristics & EXECUTABLE_SECTION_HEADER_LOCKED)               ss << "Locked" << endl << padding;
+		if (sectionHeaders[section].Characteristics & EXECUTABLE_SECTION_HEADER_PRELOAD)              ss << "Preload" << endl << padding;
+		if (sectionHeaders[section].Characteristics & EXECUTABLE_SECTION_HEADER_EXTENDED_RELOCATIONS) ss << "Extended Relocations" << endl << padding;
+		if (sectionHeaders[section].Characteristics & EXECUTABLE_SECTION_HEADER_DISCARDABLE)          ss << "Discardable" << endl << padding;
+		if (sectionHeaders[section].Characteristics & EXECUTABLE_SECTION_HEADER_NOT_CACHED)           ss << "Not Cached" << endl << padding;
+		if (sectionHeaders[section].Characteristics & EXECUTABLE_SECTION_HEADER_NOT_PAGED)            ss << "Not Paged" << endl << padding;
+		if (sectionHeaders[section].Characteristics & EXECUTABLE_SECTION_HEADER_SHARED)               ss << "Shared" << endl << padding;
+		if (sectionHeaders[section].Characteristics & EXECUTABLE_SECTION_HEADER_EXECUTE)              ss << "Execute" << endl << padding;
+		if (sectionHeaders[section].Characteristics & EXECUTABLE_SECTION_HEADER_READ)                 ss << "Read" << endl << padding;
+		if (sectionHeaders[section].Characteristics & EXECUTABLE_SECTION_HEADER_WRITE)                ss << "Write" << endl << padding;
+		ss << endl;
 	}
 	if (header & SECTION_DATA)
 	{
 		int numberOfLines;
 
-		numberOfLines = this->sectionHeaders[section].VirtualSize / 16;
-		if (this->sectionHeaders[section].VirtualSize % 16 != 0)
+		numberOfLines = sectionHeaders[section].VirtualSize / 16;
+		if (sectionHeaders[section].VirtualSize % 16 != 0)
 			numberOfLines++;
 
-		ss << "Virtual Data: " << std::endl;
-		ss << std::endl;
+		ss << "Virtual Data: " << endl;
+		ss << endl;
 		for (int i = 0; i < (numberOfLines * 16); i++)
 		{
 			if (i % 16 == 0)
@@ -380,77 +379,78 @@ std::string PortableExecutable::GetHeader(int header)
 				ss << "0x";
 				ss.width(8);
 				ss.fill('0');
-				ss << std::hex << this->sectionHeaders[section].VirtualAddress + i << "  ";
+				ss << hex << sectionHeaders[section].VirtualAddress + i << "  ";
 			}
 			if ((i + 1) % 16 == 0)
 			{
-				if (i < (int)this->sectionHeaders[section].VirtualSize && i < (int)this->sectionHeaders[section].SizeOfRawData)
+				if (i < (int)sectionHeaders[section].VirtualSize && i < (int)sectionHeaders[section].SizeOfRawData)
 				{
 					ss.width(2);
 					ss.fill('0');
-					ss << std::hex << (int)this->sections[section].Data[i] << "  ";
+					ss << hex << (int)sections[section].Data[i] << "  ";
 				}
-				else if (i < (int)this->sectionHeaders[section].VirtualSize && i >= (int)this->sectionHeaders[section].SizeOfRawData)
+				else if (i < (int)sectionHeaders[section].VirtualSize && i >= (int)sectionHeaders[section].SizeOfRawData)
 					ss << "UU  ";
 				else
 					ss << "    ";
 				for (int j = (i + 1) - 16; j < (i + 1); j++)
-					if (j < (int)this->sectionHeaders[section].VirtualSize && j < (int)this->sectionHeaders[section].SizeOfRawData)
-						if (this->sections[section].Data[j] > 32 && this->sections[section].Data[j] < 127)
-							ss << this->sections[section].Data[j];
+					if (j < (int)sectionHeaders[section].VirtualSize && j < (int)sectionHeaders[section].SizeOfRawData)
+						if (sections[section].Data[j] > 32 && sections[section].Data[j] < 127)
+							ss << sections[section].Data[j];
 						else
 							ss << ".";
-					else if (j < (int)this->sectionHeaders[section].VirtualSize && j >= (int)this->sectionHeaders[section].SizeOfRawData)
+					else if (j < (int)sectionHeaders[section].VirtualSize && j >= (int)sectionHeaders[section].SizeOfRawData)
 						ss << ".";
 					else
 						ss << " ";
-				ss << std::endl;
+				ss << endl;
 			}
 			else if ((i + 1) % 8 == 0)
 			{
-				if (i < (int)this->sectionHeaders[section].VirtualSize && i < (int)this->sectionHeaders[section].SizeOfRawData)
+				if (i < (int)sectionHeaders[section].VirtualSize && i < (int)sectionHeaders[section].SizeOfRawData)
 				{
 					ss.width(2);
 					ss.fill('0');
-					ss << std::hex << (int)this->sections[section].Data[i] << "  ";
+					ss << hex << (int)sections[section].Data[i] << "  ";
 				}
-				else if (i < (int)this->sectionHeaders[section].VirtualSize && i >= (int)this->sectionHeaders[section].SizeOfRawData)
+				else if (i < (int)sectionHeaders[section].VirtualSize && i >= (int)sectionHeaders[section].SizeOfRawData)
 					ss << "UU  ";
 				else
 					ss << "    ";
 			}
 			else
 			{
-				if (i < (int)this->sectionHeaders[section].VirtualSize && i < (int)this->sectionHeaders[section].SizeOfRawData)
+				if (i < (int)sectionHeaders[section].VirtualSize && i < (int)sectionHeaders[section].SizeOfRawData)
 				{
 					ss.width(2);
 					ss.fill('0');
-					ss << std::hex << (int)this->sections[section].Data[i] << " ";
+					ss << hex << (int)sections[section].Data[i] << " ";
 				}
-				else if (i < (int)this->sectionHeaders[section].VirtualSize && i >= (int)this->sectionHeaders[section].SizeOfRawData)
+				else if (i < (int)sectionHeaders[section].VirtualSize && i >= (int)sectionHeaders[section].SizeOfRawData)
 					ss << "UU ";
 				else
 					ss << "   ";
 			}
 		}
-		ss << std::endl;
+		ss << endl;
 	}
 	return ss.str();
 }
 int PortableExecutable::NumberOfSections()
 {
-	return this->fileHeader.NumberOfSections;
+	return fileHeader.NumberOfSections;
 }
-Section PortableExecutable::GetSection(std::string sectionName)
+Section PortableExecutable::GetSection(string sectionName)
 {
-	for (int i = 0; i < this->fileHeader.NumberOfSections; i++)
-		if (std::string((char *)this->sectionHeaders[i].Name) == sectionName)
-			return this->sections[i];
+	for (int i = 0; i < fileHeader.NumberOfSections; i++)
+		if (string((char *)sectionHeaders[i].Name) == sectionName)
+			return sections[i];
+	throw;
 }
-int PortableExecutable::GetSectionNumber(std::string sectionName)
+int PortableExecutable::GetSectionNumber(string sectionName)
 {
-	for (int i = 0; i < this->fileHeader.NumberOfSections; i++)
-		if (std::string((char *)this->sectionHeaders[i].Name) == sectionName)
+	for (int i = 0; i < fileHeader.NumberOfSections; i++)
+		if (string((char *)sectionHeaders[i].Name) == sectionName)
 			return i;
 	return 0xFFFFFFFF;
 }
