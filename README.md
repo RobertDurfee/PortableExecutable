@@ -32,7 +32,7 @@ If alterations were made to the headers or section data, this method can be call
 ```C++
 string ToString(int command = (0x00 << 24) | (0xFF << 16) | DOS_HEADER | FILE_HEADER | OPTIONAL_HEADER | SECTION_HEADER | SECTION_DATA);
 ```
-This method outputs a formatted string of the requested headers and/or section data. The `dosHeader`, `fileHeader`, and `optionalHeader` can be accessed by logical `OR`ing their respective constants to `command`. If `sectionHeaders` or `sectionData` is wanted, logical `OR` their respecitve constants and specify the first section in the bits 24 - 31 and the last section in the bits 16 - 23 of `command`. If only one section is needed, set both bit ranges to the same section. Also, if the last section desired is the last section available, the 16 - 23 bits of command to `0xFF`.
+This method outputs a formatted string of the requested headers and/or section data. The `dosHeader`, `fileHeader`, and `optionalHeader` can be accessed by logical `OR`ing their respective constants to `command`. If `sectionHeaders` or `sectionData` is wanted, logical `OR` their respecitve constants and specify the first section in the bits 24 - 31 and the last section in the bits 16 - 23 of `command`. If only one section is needed, set both bit ranges to the same section. Also, if the last section desired is the last section available, the 16 - 23 bits of command to `0xFF`. By default, all headers and section data are included in the output.
 
 ### Accessing Headers
 ```C++
@@ -161,10 +161,7 @@ int main()
 {
 	PortableExecutable pe("Test.exe");
 	
-	pe.PrintHeader(DOS_HEADER | FILE_HEADER | OPTIONAL_HEADER);
-
-	for (int i = 0; i < pe.NumberOfSections(); i++)
-		pe.PrintHeader((i << 16) | SECTION_HEADER | SECTION_DATA);
+	cout << pe.ToString();
 
 	return 0;
 }
