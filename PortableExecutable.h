@@ -1,10 +1,9 @@
 #ifndef PORTABLE_EXECUTABLE_HEADER
 #define PORTABLE_EXECUTABLE_HEADER
 
-#include <iostream>
-#include <fstream>
-#include <sstream>
-#include <bitset>
+#include <iostream>     //cout, endl
+#include <fstream>      //ifstream, ofstream
+#include <sstream>      //stringstream
 
 struct EXECUTABLE_DOS_HEADER
 {
