@@ -129,8 +129,11 @@ class PortableExecutable
 {
 public:
 	PortableExecutable(std::string);
+
 	~PortableExecutable();
+
 	void Parse();
+
 	void SetFilename(std::string);
 	void Save();
 	void SaveAs(std::string);
