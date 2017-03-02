@@ -439,7 +439,7 @@ void * PortableExecutable::GetHeader(int command)
 }
 Section * PortableExecutable::GetSection(int sectionNumber)
 {
-	if (sectionNumber > 0 && sectionNumber < fileHeader.NumberOfSections)
+	if (sectionNumber >= 0 && sectionNumber < fileHeader.NumberOfSections)
 		return &sections[sectionNumber];
 	else
 		throw;
